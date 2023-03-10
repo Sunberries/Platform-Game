@@ -21,28 +21,49 @@ void CMyGame::OnUpdate()
 	Uint32 t = GetTime();
 
 	// Run and Stand
-	m_player.SetVelocity(0, 0);
+
+	m_state = AIRBORNE;
+	for (CSprite* pSprite : m_sprites)
+	{
+		if (m_player.HitTest(pSprite))
+		{
+			m_state = STANDING;
+		}
+	}
+	if (m_state == AIRBORNE)
+	{
+		m_player.Accelerate(0, -10);
+		m_player.SetXVelocity(m_player.GetXVelocity() * 0.9);
+	}
+	if ((IsKeyDown(SDLK_w) || IsKeyDown(SDLK_UP)) && m_state != AIRBORNE)
+	{
+		m_player.SetVelocity(m_player.GetXVelocity(), 300);
+		m_state = AIRBORNE;
+	}
+	
 	if (IsKeyDown(SDLK_a) || IsKeyDown(SDLK_LEFT))
 	{
-		m_player.Accelerate(-300, 0);
-		if (m_state != RUNNING || m_side != LEFT)
-			m_player.SetAnimation("run_left");
+		m_player.SetVelocity(-400, m_player.GetYVelocity());
+		
+		if(m_state != RUNNING || m_side != LEFT) m_player.SetAnimation("run_left");
 		m_state = RUNNING;
 		m_side = LEFT;
 	}
 	else if (IsKeyDown(SDLK_d) || IsKeyDown(SDLK_RIGHT))
 	{
-		m_player.Accelerate(300, 0);
-		if (m_state != RUNNING || m_side != RIGHT)
-			m_player.SetAnimation("run_right");
+		m_player.SetVelocity(400, m_player.GetYVelocity());
+		if (m_state != RUNNING || m_side != RIGHT) m_player.SetAnimation("run_right");
 		m_state = RUNNING;
 		m_side = RIGHT;
 	}
-	else
+	else if (m_state == RUNNING)
 	{
-		if (m_state == RUNNING)
-			m_player.SetImage(m_side == LEFT ? "stand_left" : "stand_right");
+		m_player.SetImage(m_side == LEFT ? "stand_left" : "stand_right");
 		m_state = STANDING;
+	}
+	else if (m_state == STANDING)
+	{
+		m_player.SetVelocity(0, 0);
 	}
 
 	// Pre-Update Position
@@ -114,6 +135,10 @@ void CMyGame::OnStartLevel(Sint16 nLevel)
 
 		// platforms
 		pSprite = new CSpriteRect(400, 10, 800, 20, CColor::Black(), CColor::White(), GetTime());
+		pSprite->SetProperty("tag", "platform");
+		m_sprites.push_back(pSprite);
+
+		pSprite = new CSpriteRect(200, 500, 400, 20, CColor::Black(), CColor::White(), GetTime());
 		pSprite->SetProperty("tag", "platform");
 		m_sprites.push_back(pSprite);
 
