@@ -22,55 +22,101 @@ void CMyGame::OnUpdate()
 
 	// Run and Stand
 
-	m_player.SetVelocity(0, -200);
+	
+	if (m_state != STANDING || m_state != RUNNING || m_state !=CLIMBING)
+	{
+		m_player.SetVelocity(0, -200);
+	}
 
 	for (CSprite* pSprite : m_sprites)
 	{
-		if (m_player.HitTest(pSprite))
-		{
-
-			if (m_player.GetY() >= pSprite->GetY() + 10)
-			{
-				int y = (pSprite->GetY() + 25);
-				m_player.SetY(y);
-			}
-			else if (m_player.GetY() <= pSprite->GetY() - 10)
-			{
-				int y = (pSprite->GetY() - 25);
-				m_player.SetY(y);
-			}
-
-			if ((m_player.GetX() <= pSprite->GetX() + (pSprite->GetWidth() / 2)) && m_player.GetY() >= pSprite->GetWidth() - 10 && m_player.GetY() <= pSprite->GetWidth() + 10)
-			{
-				int x = (pSprite->GetX() + (pSprite->GetWidth() / 2) + 15);
-				m_player.SetX(x);
-			}
-			else if (m_player.GetX() >= pSprite->GetX() - (pSprite->GetWidth() / 2) && m_player.GetY() >= pSprite->GetWidth() - 10 && m_player.GetY() <= pSprite->GetWidth() + 10)
-			{
-				int x = (pSprite->GetX() - (pSprite->GetWidth() / 2) - 15);
-				m_player.SetX(x);
-			}
-		}
-	}
-
-	if (IsKeyDown(SDLK_w) || IsKeyDown(SDLK_UP) && m_state == STANDING)
-	{
-		m_player.Accelerate(0, 500);
-		m_state = AIRBORNE;
-	}
-	if (m_state == AIRBORNE)
-	{
-		for (CSprite* pSprite : m_sprites)
+		if ((string)pSprite->GetProperty("tag") == "platform")
 		{
 			if (m_player.HitTest(pSprite))
 			{
-				m_state = STANDING;
+
+				if (m_player.GetY() >= pSprite->GetY() + 10)
+				{
+					int y = (pSprite->GetY() + 25);
+					m_player.SetY(y);
+				}
+
+				if ((m_player.GetX() <= pSprite->GetX() + (pSprite->GetWidth() / 2)) && m_player.GetY() >= pSprite->GetWidth() - 10 && m_player.GetY() <= pSprite->GetWidth() + 10)
+				{
+					int x = (pSprite->GetX() + (pSprite->GetWidth() / 2) + 15);
+					m_player.SetX(x);
+				}
+				else if (m_player.GetX() >= pSprite->GetX() - (pSprite->GetWidth() / 2) && m_player.GetY() >= pSprite->GetWidth() - 10 && m_player.GetY() <= pSprite->GetWidth() + 10)
+				{
+					int x = (pSprite->GetX() - (pSprite->GetWidth() / 2) - 15);
+					m_player.SetX(x);
+				}
+			}
+		}
+
+		if ((string)pSprite->GetProperty("tag") == "rope")
+		{
+			if (m_player.HitTest(pSprite))
+			{
+
+				if (IsKeyDown(SDLK_w) || IsKeyDown(SDLK_UP) || IsKeyDown(SDLK_s) || IsKeyDown(SDLK_DOWN))
+				{
+					m_state = CLIMBING;
+				}
 			}
 		}
 
 	}
 
-	if (IsKeyDown(SDLK_a) || IsKeyDown(SDLK_LEFT))
+	if (m_state == CLIMBING)
+	{
+		for (CSprite* pSprite : m_sprites)
+		{
+			if (IsKeyDown(SDLK_w) || IsKeyDown(SDLK_UP))
+			{
+				m_player.Accelerate(0, 50);
+				m_player.SetAnimation("climb");
+			}
+			else if (IsKeyDown(SDLK_s) || IsKeyDown(SDLK_DOWN))
+			{
+				m_player.Accelerate(0, -50);
+				m_player.SetAnimation("climb");
+			}
+		}
+	}
+
+	if (m_player.GetX() >= GetWidth())
+	{
+		m_player.SetX(GetWidth()-2);
+	}
+	if (m_player.GetX() <= 0)
+	{
+		m_player.SetX(2);
+	}
+	if (m_player.GetY() < 0)
+	{
+		GameOver();
+	}
+	if (m_player.GetY() >= GetHeight())
+	{
+		m_player.SetY(GetHeight() - 2);
+	}
+
+	if (IsKeyDown(SDLK_w) || IsKeyDown(SDLK_UP) && (m_state == STANDING || m_state == RUNNING || m_state != CLIMBING))
+	{
+		m_player.Accelerate(0, 700);
+
+		m_state = AIRBORNE;
+		m_player.SetImage(m_side == LEFT ? "jump_left" : "jump_right");
+		}
+
+	if (m_state == AIRBORNE)
+	{
+		m_player.Accelerate(0, -200);
+	}
+
+
+	if (IsKeyDown(SDLK_a) || IsKeyDown(SDLK_LEFT) && m_state != CLIMBING)
 	{
 		m_player.Accelerate(-300, 0);
 		if (m_state != RUNNING || m_side != LEFT)
@@ -78,7 +124,7 @@ void CMyGame::OnUpdate()
 		m_state = RUNNING;
 		m_side = LEFT;
 	}
-	else if (IsKeyDown(SDLK_d) || IsKeyDown(SDLK_RIGHT))
+	else if (IsKeyDown(SDLK_d) || IsKeyDown(SDLK_RIGHT) && m_state != CLIMBING)
 	{
 		m_player.Accelerate(300, 0);
 		if (m_state != RUNNING || m_side != RIGHT)
@@ -91,6 +137,17 @@ void CMyGame::OnUpdate()
 
 		m_player.SetImage(m_side == LEFT ? "stand_left" : "stand_right");
 		m_state = STANDING;
+	}
+
+	for (CSprite* pEnemy : m_sprites)
+	{
+		if ((string)pEnemy->GetProperty("tag") == "enemy" || (string)pEnemy->GetProperty("tag") == "hazard")
+		{
+			if (m_player.HitTest(pEnemy))
+			{
+				GameOver();
+			}
+		}
 	}
 
 	// Pre-Update Position
@@ -176,6 +233,11 @@ void CMyGame::OnStartLevel(Sint16 nLevel)
 		pSprite->SetOmega(3.82 * 100);
 		m_sprites.push_back(pSprite);
 
+		//Ropes
+		pSprite = new CSpriteRect(400, 300, 5, 400, CColor::Black(), CColor::White(), GetTime());
+		pSprite->SetProperty("tag", "rope");
+		m_sprites.push_back(pSprite);
+
 
 		break;
 
@@ -194,6 +256,7 @@ void CMyGame::OnStartLevel(Sint16 nLevel)
 // called when the game is over
 void CMyGame::OnGameOver()
 {
+	PauseGame();
 }
 
 // one time termination code
